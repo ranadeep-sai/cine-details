@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Netflix Clone (OMDb)</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial,sans-serif;
+}
+
+body{
+  background:#0a0f1c;
+  color:white;
+}
+
+/* HERO */
+.hero{
+  height:360px;
+  position:relative;
+  display:flex;
+  align-items:flex-end;
+  padding:25px;
+  overflow:hidden;
+}
+
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  filter:blur(18px) brightness(0.35);
+  transform:scale(1.2);
+}
+
+.hero-content{
+  position:relative;
+  z-index:1;
+}
+
+.hero h1{
+  font-size:32px;
+}
+
+.hero p{
+  color:#a5b4fc;
+}
+
+/* SEARCH */
+.search{
+  display:flex;
+  gap:10px;
+  padding:20px;
+}
+
+input{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  outline:none;
+}
+
+button{
+  padding:12px 14px;
+  border:none;
+  border-radius:10px;
+  background:#e50914;
+  color:white;
+  cursor:pointer;
+}
+
+/* ROW SECTION */
+.row{
+  padding:15px 20px;
+}
+
+.row h2{
+  margin-bottom:10px;
+  font-size:18px;
+}
+
+/* SCROLL ROW */
+.row-scroll{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding-bottom:10px;
+}
+
+.card{
+  min-width:140px;
+  background:#141c2f;
+  border-radius:10px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:0.2s;
+  position:relative;
+}
+
+.card:hover{
+  transform:scale(1.08);
+}
+
+.card img{
+  width:100%;
+  height:200px;
+  object-fit:cover;
+}
+
+.card p{
+  padding:8px;
+  font-size:12px;
+}
+
+/* HEART */
+.heart{
+  position:absolute;
+  top:6px;
+  right:6px;
+  background:#000000aa;
+  border:none;
+  color:white;
+  border-radius:6px;
+  padding:5px;
+  cursor:pointer;
+}
+
+/* DETAILS */
+.details{
+  padding:20px;
+  display:none;
+}
+
+.box{
+  display:flex;
+  gap:20px;
+  background:#111a2e;
+  padding:20px;
+  border-radius:16px;
+}
+
+.poster{
+  width:220px;
+  border-radius:12px;
+}
+
+.info{
+  flex:1;
+}
+
+.meta{
+  color:#a5b4fc;
+  margin-bottom:10px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+
+.box-item{
+  background:#0f172a;
+  padding:10px;
+  border-radius:10px;
+}
+
+.plot{
+  margin-top:15px;
+  background:#0f172a;
+  padding:15px;
+  border-radius:12px;
+  line-height:1.6;
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .box{
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-content">
+    <h1>🎬 Netflix Clone</h1>
+    <p>OMDb Powered OTT Experience</p>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div class="search">
+  <input id="searchInput" placeholder="Search movies..." />
+  <button onclick="searchMovie()">Search</button>
+</div>
+
+<!-- ROWS -->
+<div class="row">
+  <h2>🔥 Search Results</h2>
+  <div id="searchRow" class="row-scroll"></div>
+</div>
+
+<div class="row">
+  <h2>❤️ My List</h2>
+  <div id="watchRow" class="row-scroll"></div>
+</div>
+
+<!-- DETAILS -->
+<div id="details" class="details"></div>
+
+<script>
+const API_KEY = "728f1ec0";
+let watchlist = JSON.parse(localStorage.getItem("watchlist") || "[]");
+
+/* SEARCH */
+async function searchMovie(){
+  const q = document.getElementById("searchInput").value;
+
+  const res = await fetch(`https://www.omdbapi.com/?s=${q}&apikey=${API_KEY}`);
+  const data = await res.json();
+
+  const row = document.getElementById("searchRow");
+  row.innerHTML="";
+
+  if(data.Response==="True"){
+    data.Search.forEach(m=>{
+      row.appendChild(createCard(m));
+    });
+  }
+}
+
+/* CARD */
+function createCard(m){
+  const div = document.createElement("div");
+  div.className="card";
+
+  div.innerHTML=`
+    <button class="heart">❤️</button>
+    <img src="${m.Poster!=="N/A"?m.Poster:""}"/>
+    <p>${m.Title}</p>
+  `;
+
+  div.querySelector(".heart").onclick=(e)=>{
+    e.stopPropagation();
+    toggleWatch(m);
+  };
+
+  div.onclick=()=>getDetails(m.imdbID);
+
+  return div;
+}
+
+/* WATCHLIST */
+function toggleWatch(movie){
+  const exists = watchlist.find(x=>x.imdbID===movie.imdbID);
+
+  if(exists){
+    watchlist = watchlist.filter(x=>x.imdbID!==movie.imdbID);
+  }else{
+    watchlist.push(movie);
+  }
+
+  localStorage.setItem("watchlist",JSON.stringify(watchlist));
+  renderWatchlist();
+}
+
+/* WATCHLIST UI */
+function renderWatchlist(){
+  const row = document.getElementById("watchRow");
+  row.innerHTML="";
+
+  watchlist.forEach(m=>{
+    row.appendChild(createCard(m));
+  });
+}
+
+/* DETAILS */
+async function getDetails(id){
+  const res = await fetch(`https://www.omdbapi.com/?i=${id}&plot=full&apikey=${API_KEY}`);
+  const m = await res.json();
+
+  document.getElementById("hero").style.backgroundImage = `url(${m.Poster})`;
+
+  document.getElementById("details").style.display="block";
+
+  document.getElementById("details").innerHTML=`
+    <div class="box">
+
+      <img class="poster" src="${m.Poster}"/>
+
+      <div class="info">
+
+        <h2>${m.Title}</h2>
+        <div class="meta">${m.Year} • ${m.Genre} • ⭐ ${m.imdbRating}</div>
+
+        <div class="grid">
+          <div class="box-item"><b>🎭 Cast</b><br>${m.Actors}</div>
+          <div class="box-item"><b>🎬 Director</b><br>${m.Director}</div>
+          <div class="box-item"><b>✍ Writer</b><br>${m.Writer}</div>
+          <div class="box-item"><b>⏱ Runtime</b><br>${m.Runtime}</div>
+          <div class="box-item"><b>🌐 Language</b><br>${m.Language}</div>
+          <div class="box-item"><b>🌍 Country</b><br>${m.Country}</div>
+          <div class="box-item"><b>💰 Box Office</b><br>${m.BoxOffice || "N/A"}</div>
+          <div class="box-item"><b>🏆 Awards</b><br>${m.Awards}</div>
+        </div>
+
+        <div class="plot">
+          <b>📖 Story</b><br><br>
+          ${m.Plot}
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
+/* INIT */
+renderWatchlist();
+</script>
+
+</body>
+</html>
